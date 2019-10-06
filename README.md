@@ -23,7 +23,7 @@ Classes
 - BlackjackGame (Game)
   - Constructor(num_decks: int, min_bet: int, max_bet: int, num_players: int, starting_chips: Chips)
   - Fields
-    - game_deck: Deck
+    - num_decks: int
     - human_players: List[HumanPlayer]
     - dealer: Dealer
   - Methods
@@ -55,8 +55,9 @@ Classes
     - deal(num_cards: int) -> None
 
 - Card
+  - Constructor(rank: str, suit: str)
   - Fields
-    - name: str
+    - rank: str
     - suit: int
   - Methods
     - \_\_str\_\_() -> str
@@ -66,15 +67,6 @@ Classes
   - Fields
   - Methods
     - take_action(actions: List[str]) -> int
-
-- Chips
-  - Constructor(chip_dict: Dict[int, int])
-  - Fields
-    - chip_dict: Dict[int, int]
-  - Methods
-    - get_cur_value() -> int
-    - take_chips(chip_amount: int, number: int) -> Chips
-      - throws Exceptions if not enough chips or invalid chip_amount
 
 - HumanPlayer (Player)
   - Constructor(starting_chips: Chips)
@@ -89,6 +81,13 @@ Classes
   - Fields
   - Methods
 
-- Constructor()
-- Fields
-- Methods
+
+# DECIDED NOT TO HAVE
+- Chips
+  - Constructor(chip_dict: Dict[int, int])
+  - Fields
+    - chip_dict: Dict[int, int]
+  - Methods
+    - get_cur_value() -> int
+    - take_chips(chip_amount: int, number: int) -> Chips
+      - throws Exceptions if not enough chips or invalid chip_amount
