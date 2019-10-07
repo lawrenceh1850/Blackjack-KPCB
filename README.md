@@ -9,13 +9,13 @@ Single or multi player vs. AI dealer
 ### How to run game/tests
 - clone repository to directory of choice
 ```
-git clone git@github.com:lawrenceh1850/Blackjack-KPCB.git
+git clone https://github.com/lawrenceh1850/Blackjack-KPCB.git
 ```
 - navigate to cloned repository
 ```
 cd Blackjack-KPCB
 ```
-- change permissions on run scripts
+- change permissions on run scripts (if they have not been changed already)
 ```
 chmod 700 run_blackjack.sh
 chmod 700 run_blackjack_tests.sh
