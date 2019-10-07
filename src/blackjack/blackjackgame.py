@@ -172,13 +172,13 @@ class BlackjackGame(Game):
         return values
 
     def _deal_to_player(self, player) -> Card:
-        # TODO: handle if the deck needs to be reshuffled
+        """Raises NoMoreCardsError if run out cards."""
         card_dealt = self.shoe.deal()
         player.hand.append(card_dealt)
         return card_dealt
 
     def _deal_a_card(self) -> Card:
-        # TODO: handle if the deck needs to be reshuffled
+        """Raises NoMoreCardsError if run out cards."""
         return self.shoe.deal()
 
     def _deal_hands(self):
@@ -243,17 +243,17 @@ class BlackjackGame(Game):
                 player.chips -= side_bet
                 self.player_side_bets[player] = side_bet
 
-    def _is_split_hand(self, player) -> bool:
-        if len(player.hand) != 2:
+    def _is_split_hand(self, hand) -> bool:
+        if len(hand) != 2:
             return False
         else:
-            return player.hand[0].rank == player.hand[1].rank
+            return hand[0].rank == hand[1].rank
 
-    def _is_double_hand(self, player) -> bool:
-        if len(player.hand) != 2:
+    def _is_double_hand(self, hand) -> bool:
+        if len(hand) != 2:
             return False
         else:
-            x = self._calc_hand_value(player.hand)
+            x = self._calc_hand_value(hand)
             return 9 in x or 10 in x or 11 in x
 
     def _handle_split(self, player):
@@ -369,8 +369,8 @@ class BlackjackGame(Game):
                 self.bj_players[player] = True
                 continue
             else:
-                split_option = self._is_split_hand(player)
-                double_option = self._is_double_hand(player)
+                split_option = self._is_split_hand(player.hand)
+                double_option = self._is_double_hand(player.hand)
 
                 if split_option and double_option:
                     # can choose to either split or choose

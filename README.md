@@ -6,6 +6,24 @@ Based off of the rules found here: https://bicyclecards.com/how-to-play/blackjac
 ### Game modes
 Single-player vs. AI dealer
 
+### System tests
+- player tries to split, can't if they don't have enough chips to match original bet
+- player gets one blackjack out of two split hands
+- set a player's chips to 0
+    - when there was 1 player: game ended
+    - when there were multiple players: game continued with other players
+- set dealer hand to a blackjack
+    - insurance situations:
+        - set ace face up
+            - buy insurance with half of original bet
+            - try to buy insurance when no chips remaining
+- set deck to be empty
+    - before dealing
+    - after dealing
+            
+### Points of improvement:
+- when offering insurance, tell player how much they can buy maximum right away instead of in a tooltip
+
 ## Design
 
 ---
