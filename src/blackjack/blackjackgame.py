@@ -30,6 +30,8 @@ class BlackjackGame(Game):
 
         # keep track of players who split
         self.split_players = set()
+        # keep track of blackjacks for players
+        self.bj_players = {}
 
         self.round = 1
 
@@ -64,8 +66,11 @@ class BlackjackGame(Game):
         for player in self.player_main_bets:
             print(
                 f"Player \"{player.name}\" main bet: {self.player_main_bets[player]}")
-            print(
-                f"Player \"{player.name}\" side bet: {self.player_side_bets[player]}")
+
+            side_bet = self.player_side_bets[player]
+            if side_bet > 0:
+                print(
+                    f"Player \"{player.name}\" side bet: {side_bet}")
             print()
         print()
 
@@ -73,10 +78,6 @@ class BlackjackGame(Game):
         title = f"===== Round {self.round} ====="
         print(title)
         self._print_players()
-
-        # TODO: remove
-        print(self.player_main_bets)
-        print(self.player_side_bets)
 
     def _select_player_names(self, num_players):
         print("=== NOW SELECTING NAMES ===")
@@ -87,7 +88,7 @@ class BlackjackGame(Game):
                 unique_strs(picked_names),
                 "Please enter a non-empty, unique name.",
                 quit_callback=lambda: self.quit_game(
-                    "Exiting name selection...")
+                    "=== Exiting name selection... ===")
             )
             self.human_players[i].name = name
         print("=== DONE SELECTING NAMES ===")
@@ -99,20 +100,33 @@ class BlackjackGame(Game):
             self.player_side_bets[player] = 0
 
     def _check_player_status(self, player_index):
+        """Returns True if player can still play, else False."""
         player = self.human_players[player_index]
         # player no longer has enough to play
         if player.chips < self.min_bet:
             print(
                 f"Player \"{player.name}\" no longer has enough chips to play.")
 
+            player = self.human_players[player_index]
+            if player in self.player_main_bets:
+                del self.player_main_bets[player]
+            if player in self.player_side_bets:
+                del self.player_side_bets[player]
+            if player in self.split_players:
+                self.split_players.remove(player)
+            if player in self.bj_players:
+                del self.bj_players[player]
             del self.human_players[player_index]
 
             if len(self.human_players) < 1:
                 self.quit_game("No players remaining...Quitting game")
+            return False
+        return True
 
     def _collect_bets(self):
         for (index, player) in enumerate(self.human_players):
-            self._check_player_status(index)
+            if not self._check_player_status(index):
+                continue
 
             max_possible = min(self.max_bet, player.chips)
 
@@ -125,7 +139,7 @@ class BlackjackGame(Game):
                 is_num_within_bounds(self.min_bet, max_possible),
                 f"Please enter a bet between the minimum bet (${self.min_bet}) and {max_message} (${max_possible})",
                 quit_callback=lambda:
-                self.quit_game("Quitting game...")))
+                self.quit_game("=== Quitting game... ===")))
 
             self.player_main_bets[player] = bet
             # subtract bet from player chips
@@ -172,8 +186,11 @@ class BlackjackGame(Game):
                 title = f"=== Now dealing to player \"{player.name}\" ==="
                 print(title)
                 self._deal_to_player(player)
-                print(f"\"{player.name}\" now has: \n" +
+                print(f"=== \"{player.name}\" now has: ===\n" +
                       player.hand_to_str(), end="\n\n")
+                if 21 in self._calc_hand_value(player.hand):
+                    print(f"=== Player \"{player.name}\" has a blackjack! ===")
+                    self.bj_players[player] = True
             self.i_manager.enter_to_cont()
             print()
 
@@ -182,7 +199,7 @@ class BlackjackGame(Game):
         print(title)
         for i in range(2):
             self._deal_to_player(self.dealer)
-        print(f"Dealer's hand so far:\n{self.dealer.hand_to_str()}")
+        print(f"=== Dealer's hand so far: ===\n{self.dealer.hand_to_str()}")
         self.i_manager.enter_to_cont()
 
         print()
@@ -228,20 +245,32 @@ class BlackjackGame(Game):
                 "=== Player \"{player.name}\" does not have enough chips remaining to split ===")
             return False
         else:
-            player.chips -= current_bet
-            self.player_main_bets[player] += current_bet
-            self.split_players.add(player)
-
             if len(player.hand) != 2:
                 return False
             else:
+                player.chips -= current_bet
+                self.player_main_bets[player] += current_bet
+
+                print(
+                    f"=== Player \"{player.name}\" has added an additional, equal bet for their second hand ===")
+                self._print_bets()
+
+                self.split_players.add(player)
                 player.hand = [[player.hand[0]], [player.hand[1]]]
 
                 for i in range(2):
                     print(
-                        f"=== Player \"{player.name}\" now playing split hand {i+1} ===")
+                        f"=== Player \"{player.name}\" now playing split hand #{i+1} ===")
                     player.hand[i] = self._handle_normal_play(
                         player.name, player.hand[i])
+                    # check for player blackjack
+                    if len(player.hand[i]) == 2 and (21 in self._calc_hand_value(player.hand[i])):
+                        if player in self.bj_players:
+                            self.bj_players[player][i] = True
+                        else:
+                            self.bj_players[player] = [False, False]
+                            self.bj_players[player][i] = True
+
                 return True
 
     def _handle_double(self, player):
@@ -256,36 +285,37 @@ class BlackjackGame(Game):
     def _handle_normal_play(self, player_name, player_hand):
         """Returns hand after round of play."""
 
-        print(f"Current hand:\n {HumanPlayer.static_hand_to_str(player_hand)}")
+        print(
+            f"=== Current hand: ===\n {HumanPlayer.static_hand_to_str(player_hand)}")
         while True:
-            # TODO: remove
-            self._print_game_state()
             hand_vals = self._calc_hand_value(player_hand)
 
             # bust
             if len(hand_vals) == 0:
                 print(
                     f"=== Player \"{player_name}\" has bust! ===")
+                self.i_manager.enter_to_cont()
                 break
 
-            print("Current hand value: " +
-                  "/".join([str(i) for i in list(hand_vals)]))
+            print("=== Current hand value: " +
+                  "/".join([str(i) for i in list(hand_vals)]) + " ===")
             choice = int(self.i_manager.get_input(
                 "Do you wish to:\n1.) hit\n2.) stand\n-> ",
                 is_num_within_bounds(1, 2),
                 "Please enter 1 or 2",
                 quit_callback=lambda:
-                self.quit_game("Quitting game...")))
+                self.quit_game("=== Quitting game... ===")))
 
             if choice == 1:
                 # hit
                 card_dealt = self._deal_a_card()
                 player_hand.append(card_dealt)
                 print(
-                    f"Player \"{player_name}\" was dealt a {card_dealt}", end="\n\n")
-                print(f"\"{player_name}\" now has: \n" +
+                    f"=== Player \"{player_name}\" was dealt a {card_dealt} ===", end="\n\n")
+                print(f"=== \"{player_name}\" now has: === \n" +
                       HumanPlayer.static_hand_to_str(player_hand), end="\n\n")
             else:
+                self.i_manager.enter_to_cont()
                 break
         return player_hand
 
@@ -312,6 +342,7 @@ class BlackjackGame(Game):
 
             if 21 in self._calc_hand_value(player.hand):
                 print(f"=== Player \"{player.name}\" has a blackjack! ===")
+                self.bj_players[player] = True
                 continue
             else:
                 split_option = self._is_split_hand(player)
@@ -364,21 +395,162 @@ class BlackjackGame(Game):
 
                 # normal player action
                 self._handle_normal_play(player.name, player.hand)
-                self.i_manager.enter_to_cont()
 
         return False
 
     def _dealer_actions(self):
-        pass
+        # reveal dealer's other hand
+        print("=== Dealer's hand is fully revealed ===")
+        print("=== Dealer has: ===\n" + self.dealer.hand_to_str(reveal_all=True))
 
-    def _settle_payments(self):
-        pass
+        while True:
+            dealer_hand_vals = self._calc_hand_value(self.dealer.hand)
+
+            # bust
+            if len(dealer_hand_vals) == 0:
+                print(
+                    "=== Dealer has bust! ===")
+                break
+            else:
+                max_val = max(dealer_hand_vals)
+                print(
+                    f"=== Dealer's hand has a value of {max_val}")
+                if max_val < 17:
+                    print(
+                        "=== Dealer has less than 17, dealer hits ===")
+                    dealt_card = self._deal_to_player(self.dealer)
+                    print(
+                        f"=== Dealer was dealt a {str(dealt_card)} ===")
+                    print("=== Dealer now has ===\n" +
+                          self.dealer.hand_to_str(reveal_all=True))
+                else:
+                    print(
+                        "=== Dealer has 17 or more, dealer stands ===")
+                    break
+        self.i_manager.enter_to_cont()
+
+    def _settle_payments(self, dealer_blackjack: bool):
+        print("\n=== Round completed, now settling payments ===")
+        self.i_manager.enter_to_cont()
+
+        # TODO: handle insurance, dealer blackjack
+
+        dealer_hand_vals = self._calc_hand_value(self.dealer.hand)
+
+        for player in self.human_players:
+            if player in self.split_players:
+                for (i, split_hand) in enumerate(player.hand):
+                    bet_amount = self.player_main_bets[player] / 2
+                    print(
+                        f"=== Settling split hand #{i+1} for Player \"{player.name}\" ===")
+
+                    player_hand_vals = self._calc_hand_value(split_hand)
+                    print(player_hand_vals)
+
+                    # player blackjack stored as array of booleans for split hands
+                    player_blackjack = False
+                    if player in self.bj_players.keys():
+                        player_blackjack = self.bj_players[player][i]
+
+                    original_bet_amount = self.player_main_bets[player] / 2
+
+                    self._check_hand_winner(
+                        dealer_blackjack, dealer_hand_vals, player, player_blackjack, player_hand_vals, original_bet_amount)
+            else:
+                original_bet_amount = self.player_main_bets[player]
+                player_blackjack = False
+                if player in self.bj_players.keys():
+                    player_blackjack = True
+                player_hand_vals = self._calc_hand_value(player.hand)
+
+                print(
+                    f"=== Settling hand for Player \"{player.name}\" ===")
+                self._check_hand_winner(
+                    dealer_blackjack, dealer_hand_vals, player, player_blackjack, player_hand_vals, original_bet_amount)
+            self.i_manager.enter_to_cont()
+
+    def _check_hand_winner(self,
+                           dealer_blackjack, dealer_hand_vals, player, player_blackjack, player_hand_vals, original_bet_amount):
+        player_payback_multiple = 0
+
+        # dealer had blackjack
+        if dealer_blackjack:
+            if player_blackjack:
+                print(
+                    f"=== Both dealer and player \"{player.name}\" had blackjacks! ===")
+                player_payback_multiple = 1
+            else:
+                print(
+                    f"=== Dealer had blackjack and won! ===")
+                player_payback_multiple = 0
+        elif player_blackjack:  # if player had blackjack, automatically wins
+            print(
+                f"=== Player had blackjack and won! ===")
+            player_payback_multiple = 2.5
+        else:  # neither dealer nor player had BJ
+            dealer_bust = False
+            player_bust = False
+            dealer_hand_val = 0
+            player_hand_val = 0
+
+            # check dealer bust
+            if len(dealer_hand_vals) == 0:
+                dealer_bust = True
+            else:
+                dealer_hand_val = max(dealer_hand_vals)
+
+            # check player bust
+            if len(player_hand_vals) == 0:
+                player_bust = True
+            else:
+                player_hand_val = max(player_hand_vals)
+
+            # player bust, automatically loses
+            if player_bust:
+                print(f"=== Player \"{player.name}\" busted on this hand ===")
+                player_payback_multiple = 0
+            else:  # player did not bust
+                if dealer_bust:  # dealer bust, player wins
+                    print("=== Dealer busted ===")
+                    player_payback_multiple = 2
+                else:  # compare numbers
+                    if dealer_hand_val > player_hand_val:
+                        # dealer won
+                        print("=== Dealer had the higher hand and won ===")
+                        player_payback_multiple = 0
+                    elif dealer_hand_val == player_hand_val:
+                        # push
+                        print(
+                            f"=== Dealer and player \"{player.name}\" had equal hands, push ===")
+                        player_payback_multiple = 1
+                    else:
+                        # player won
+                        print(
+                            f"=== Player \"{player.name}\" had the higher hand and won ===")
+                        player_payback_multiple = 2
+
+        if player_payback_multiple == 0:
+            print(
+                f"=== Player \"{player.name}\" lost their bet of ${original_bet_amount} ===")
+        elif player_payback_multiple == 1:
+            print(
+                f"=== Player \"{player.name}\" was refunded their bet of ${original_bet_amount} ===")
+        elif player_payback_multiple == 2:
+            print(
+                f"=== Player \"{player.name}\" was refunded their bet of ${original_bet_amount} and won an additional ${original_bet_amount} ===")
+        elif player_payback_multiple == 2.5:
+            print(
+                f"=== Player \"{player.name}\" refunded their bet of ${original_bet_amount} and won an additional ${original_bet_amount * 1.5} ===")
+
+        player.chips += original_bet_amount * player_payback_multiple
+        print()
 
     def _reset_round(self):
         for player in self.human_players:
             player.clear_hand()
         self.dealer.clear_hand()
         self.split_players = set()
+        self.bj_players = {}
         self._init_betting()
 
     def game_setup(self) -> None:
@@ -417,6 +589,8 @@ class BlackjackGame(Game):
         while True:
             # Print current game state
             self._print_game_state()
+
+            # also checks if players are still in the game
             self._collect_bets()
 
             self.i_manager.clear_screen()
@@ -424,16 +598,13 @@ class BlackjackGame(Game):
             self.i_manager.enter_to_cont()
 
             self._deal_hands()
-            # TODO: remove
-            self.dealer.hand = [Card(4, 1), Card(10, 1)]
-            self.human_players[0].hand = [Card(4, 1), Card(4, 1)]
 
-            self._player_actions()
-            self._dealer_actions()
+            dealer_blackjack = self._player_actions()
+            if not dealer_blackjack:
+                self._dealer_actions()
 
-            self._settle_payments()
+            self._settle_payments(dealer_blackjack)
             self._reset_round()
-
             self.round += 1
 
     def quit_game(self, quit_message):

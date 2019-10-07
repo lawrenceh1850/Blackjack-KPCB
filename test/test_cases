@@ -1,2 +1,6 @@
 System tests
 - player tries to split, can't if they don't have enough chips to match original bet
+- player gets one blackjack on a split
+- set a player's chips to 0
+    - when there was 1 player: game ended
+    - when there were multiple players: game continued with other players
