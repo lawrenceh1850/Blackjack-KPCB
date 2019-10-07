@@ -9,6 +9,7 @@ from players.human_player import HumanPlayer
 from players.dealer import Dealer
 from gamepieces.shoe import Shoe
 from gamepieces.card import Card
+from gamepieces.deck import NoMoreCardsError
 from validate_funcs import is_num, unique_strs, is_num_within_bounds, y_or_n
 
 
@@ -180,6 +181,8 @@ class BlackjackGame(Game):
         return self.shoe.deal()
 
     def _deal_hands(self):
+        """Raises NoMoreCardsError if run out cards."""
+
         # Deal to players
         for i in range(2):
             print(f"=== Dealing card #{i+1} ===")
@@ -187,7 +190,11 @@ class BlackjackGame(Game):
                 player = self.human_players[index]
                 title = f"=== Now dealing to player \"{player.name}\" ==="
                 print(title)
-                self._deal_to_player(player)
+                try:
+                    self._deal_to_player(player)
+                except NoMoreCardsError:
+                    raise
+
                 print(f"=== \"{player.name}\" now has: ===\n" +
                       player.hand_to_str(), end="\n\n")
                 if 21 in self._calc_hand_value(player.hand):
@@ -200,7 +207,10 @@ class BlackjackGame(Game):
         title = f"=== Now dealing to Dealer ==="
         print(title)
         for i in range(2):
-            self._deal_to_player(self.dealer)
+            try:
+                self._deal_to_player(self.dealer)
+            except NoMoreCardsError:
+                raise
         print(f"=== Dealer's hand so far: ===\n{self.dealer.hand_to_str()}")
         self.i_manager.enter_to_cont()
 
@@ -215,7 +225,7 @@ class BlackjackGame(Game):
                 self.quit_game("Quitting game...")).lower()
 
             if player_choice == "y":
-                    # only allowed to buy up to half of original bet
+                # only allowed to buy up to half of original bet
                 max_allowed = min(
                     self.player_main_bets[player] // 2, player.chips)
 
@@ -286,7 +296,11 @@ class BlackjackGame(Game):
         print(
             f"=== Player \"{player.name}\" has doubled their bet to {self.player_main_bets[player]} ===")
 
-        self._deal_to_player(player)
+        try:
+            self._deal_to_player(player)
+        except NoMoreCardsError:
+            raise
+
         print(
             f"=== Player \"{player.name}\" has been dealt another card face down and their turn is over ===")
 
@@ -570,6 +584,22 @@ class BlackjackGame(Game):
         self.split_players = set()
         self.bj_players = {}
         self._init_betting()
+        self.round += 1
+
+    def _reset_shoe(self):
+        # seed random num generator
+        random.seed(time.time())
+
+        print("=== Resetting shoe and reshuffling ===")
+        num_decks = self.shoe.num_decks
+        self.shoe = Shoe(num_decks)
+        self.shoe.shuffle()
+
+    def _refund_bets(self):
+        for player in self.player_main_bets:
+            player.chips += self.player_main_bets[player]
+        for player in self.player_side_bets:
+            player.chips += self.player_side_bets[player]
 
     def game_setup(self) -> None:
         # clear screen
@@ -615,15 +645,25 @@ class BlackjackGame(Game):
             self._print_bets()
             self.i_manager.enter_to_cont()
 
-            self._deal_hands()
+            try:
+                self._deal_hands()
 
-            dealer_blackjack = self._player_actions()
-            if not dealer_blackjack:
-                self._dealer_actions()
+                self.shoe._cards = []
+
+                dealer_blackjack = self._player_actions()
+                if not dealer_blackjack:
+                    self._dealer_actions()
+            except NoMoreCardsError:
+                print("=== Run out of cards ===")
+                print("=== Refunding bets ===")
+                self._refund_bets()
+                self._reset_shoe()
+                print("=== Starting new round ===")
+                self._reset_round()
+                continue
 
             self._settle_payments(dealer_blackjack)
             self._reset_round()
-            self.round += 1
 
     def quit_game(self, quit_message):
         print(quit_message)

@@ -9,7 +9,9 @@ System tests
         - set ace face up
             - buy insurance with half of original bet
             - try to buy insurance when no chips remaining
+- set deck to be empty
+    - before dealing
+    - after dealing
             
 Points of improvement:
-- improve the smoothness when a player chooses to double, a lot of output gets thrown out at once
-- when offering insurance, tell player how much they can buy maximum
+- when offering insurance, tell player how much they can buy maximum right away instead of in a tooltip

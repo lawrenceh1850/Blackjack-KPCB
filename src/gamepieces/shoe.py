@@ -15,6 +15,10 @@ class Shoe:
     def num_decks(self):
         return self._num_decks
 
+    @property
+    def num_cards(self):
+        return len(self._cards)
+
     def shuffle(self):
         num_shuffles = random.randint(3, 10)
         for _ in range(num_shuffles):
