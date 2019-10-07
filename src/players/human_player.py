@@ -34,7 +34,15 @@ class HumanPlayer(Player):
         self._name = name
 
     def hand_to_str(self):
-        return HumanPlayer.static_hand_to_str(self.hand)
+        # in case of multiple hands
+        if any(isinstance(subhand, list) for subhand in self.hand):
+            str_rep = ""
+            for (i, subhand) in enumerate(hand):
+                str_rep += f"Subhand {i+1}\n" + \
+                    HumanPlayer.static_hand_to_str(subhand) + "\n"
+            return str_rep[:-1]
+        else:
+            return HumanPlayer.static_hand_to_str(self.hand)
 
     def clear_hand(self):
         self.hand = []

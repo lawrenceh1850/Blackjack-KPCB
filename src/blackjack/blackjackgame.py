@@ -44,7 +44,7 @@ class BlackjackGame(Game):
 
         self.dealer = Dealer()
 
-    def _print_players(self, bet: bool = False):
+    def _print_players(self, bet: bool = False, hand: bool = False):
         title = "=== PLAYER SUMMARY ==="
         print(title, end="")
         for (index, player) in enumerate(self.human_players):
@@ -53,6 +53,8 @@ class BlackjackGame(Game):
             print(player)
             if bet:
                 print(f"Bet amount: {self.player_main_bets[player]}")
+            if hand:
+                print(f"Hand:\n {player.hand_to_str()}")
         print("=" * len(title))
 
     def _print_rules(self):
@@ -214,11 +216,17 @@ class BlackjackGame(Game):
 
             if player_choice == "y":
                     # only allowed to buy up to half of original bet
-                max_allowed = self.player_main_bets[player] // 2
+                max_allowed = min(
+                    self.player_main_bets[player] // 2, player.chips)
+
+                condition_str = "half of your original bet"
+                if max_allowed == player.chips:
+                    condition_str = "your remaining chips"
+
                 side_bet = int(self.i_manager.get_input(
                     f"How much insurance do you want to buy? ",
                     is_num_within_bounds(0, max_allowed),
-                    f"Please enter a positive amount no more than ${max_allowed} (half of your original bet)", quit_callback=lambda:
+                    f"Please enter a positive amount no more than ${max_allowed} ({condition_str})", quit_callback=lambda:
                     self.quit_game("Quitting game...")).lower())
 
                 self.player_side_bets[player] = side_bet
@@ -404,6 +412,7 @@ class BlackjackGame(Game):
         print("=== Dealer has: ===\n" + self.dealer.hand_to_str(reveal_all=True))
 
         while True:
+            self.i_manager.enter_to_cont()
             dealer_hand_vals = self._calc_hand_value(self.dealer.hand)
 
             # bust
@@ -431,13 +440,22 @@ class BlackjackGame(Game):
 
     def _settle_payments(self, dealer_blackjack: bool):
         print("\n=== Round completed, now settling payments ===")
-        self.i_manager.enter_to_cont()
+        self._print_players(bet=True, hand=True)
 
-        # TODO: handle insurance, dealer blackjack
+        self.i_manager.enter_to_cont()
 
         dealer_hand_vals = self._calc_hand_value(self.dealer.hand)
 
         for player in self.human_players:
+            # handle side bets for insurance
+            if player in self.player_side_bets:
+                if dealer_blackjack:
+                    side_bet_amount = self.player_side_bets[player]
+                    payout = side_bet_amount * 2
+                    player.chips += payout
+                    print(
+                        f"=== Dealer had blackjack and Player \"{player.name}\" collects ${payout} from insurance ===")
+
             if player in self.split_players:
                 for (i, split_hand) in enumerate(player.hand):
                     bet_amount = self.player_main_bets[player] / 2
