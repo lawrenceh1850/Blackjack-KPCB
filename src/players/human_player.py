@@ -37,7 +37,7 @@ class HumanPlayer(Player):
         # in case of multiple hands
         if any(isinstance(subhand, list) for subhand in self.hand):
             str_rep = ""
-            for (i, subhand) in enumerate(hand):
+            for (i, subhand) in enumerate(self.hand):
                 str_rep += f"Subhand {i+1}\n" + \
                     HumanPlayer.static_hand_to_str(subhand) + "\n"
             return str_rep[:-1]

@@ -1,3 +1,4 @@
+import argparse
 from copy import deepcopy
 import random
 import time
@@ -55,7 +56,7 @@ class BlackjackGame(Game):
             if bet:
                 print(f"Bet amount: {self.player_main_bets[player]}")
             if hand:
-                print(f"Hand:\n {player.hand_to_str()}")
+                print(f"Hand:\n{player.hand_to_str()}")
         print("=" * len(title))
 
     def _print_rules(self):
@@ -239,6 +240,7 @@ class BlackjackGame(Game):
                     f"Please enter a positive amount no more than ${max_allowed} ({condition_str})", quit_callback=lambda:
                     self.quit_game("Quitting game...")).lower())
 
+                player.chips -= side_bet
                 self.player_side_bets[player] = side_bet
 
     def _is_split_hand(self, player) -> bool:
@@ -477,7 +479,6 @@ class BlackjackGame(Game):
                         f"=== Settling split hand #{i+1} for Player \"{player.name}\" ===")
 
                     player_hand_vals = self._calc_hand_value(split_hand)
-                    print(player_hand_vals)
 
                     # player blackjack stored as array of booleans for split hands
                     player_blackjack = False
@@ -648,8 +649,6 @@ class BlackjackGame(Game):
             try:
                 self._deal_hands()
 
-                self.shoe._cards = []
-
                 dealer_blackjack = self._player_actions()
                 if not dealer_blackjack:
                     self._dealer_actions()
@@ -671,7 +670,26 @@ class BlackjackGame(Game):
 
 
 if __name__ == "__main__":
-    # TODO: add an argparse that allows user to pick their values
-    bj_game = BlackjackGame(1, 4, 2, 500, 100)
-    # bj_game = BlackjackGame(2, 4, 2, 500, 100)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-np", "--num_players", type=int, default=1,
+                        help="Number of human players")
+    parser.add_argument("-nd", "--num_decks", type=int, default=4,
+                        help="Number of decks in shoe")
+    parser.add_argument("-min", "--min_bet", type=int, default=2,
+                        help="Minimum bet amount")
+    parser.add_argument("-max", "--max_bet", type=int, default=500,
+                        help="Maximum bet amount")
+    parser.add_argument("-start", "--starting_chips", type=int, default=500,
+                        help="Starting chips amount")
+
+    args = vars(parser.parse_args())
+    print(args)
+    np = max(1, args["num_players"])
+    nd = max(1, args["num_decks"])
+    min_bet = max(0, args["min_bet"])
+    max_bet = max(1, args["max_bet"])
+    sc = max(1, args["starting_chips"])
+
+    bj_game = BlackjackGame(np, nd, min_bet, max_bet, sc)
     bj_game.play()
