@@ -63,6 +63,7 @@ class BlackjackGame(Game):
         print(title)
         print(f"Minimum bet: {self.min_bet}")
         print(f"Maximum bet: {self.max_bet}")
+        print(f"Press CTRL + C or CTRL + D to quit at any time.")
         print("=" * len(title))
 
     def _print_bets(self):
@@ -473,7 +474,7 @@ class BlackjackGame(Game):
 
             if player in self.split_players:
                 for (i, split_hand) in enumerate(player.hand):
-                    bet_amount = self.player_main_bets[player] / 2
+                    bet_amount = self.player_main_bets[player] // 2
                     print(
                         f"=== Settling split hand #{i+1} for Player \"{player.name}\" ===")
 
@@ -484,7 +485,7 @@ class BlackjackGame(Game):
                     if player in self.bj_players.keys():
                         player_blackjack = self.bj_players[player][i]
 
-                    original_bet_amount = self.player_main_bets[player] / 2
+                    original_bet_amount = self.player_main_bets[player] // 2
 
                     self._check_hand_winner(
                         dealer_blackjack, dealer_hand_vals, player, player_blackjack, player_hand_vals, original_bet_amount)
